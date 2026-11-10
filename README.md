@@ -4,6 +4,13 @@
 
 单文件 HTML 实现（`index.html`，约 110KB），外层用 Capacitor 8 打包成 Android APK，并带一套自己的热更新机制（不需要重新上架即可更新页面）。
 
+## 下载安装（Android）
+
+最新版安装包在 Releases 页面：**[Releases](https://github.com/3372644a-max/life-ledger/releases/latest)**
+
+- 手机直接打开 `life-ledger-v5.13.apk` 的下载链接安装即可，覆盖安装不会丢失账本数据（数据存在本地 localStorage）
+- v5.12 及更早版本的壳没有「代际守卫」，热更新只能靠兜底防线事后纠正，建议升级到 v5.13
+
 ## 功能
 
 - **多板块 K 线**：身价、成长、健康、关系等板块各自维护时间序列，切换板块即切换图表与顶部大数字
