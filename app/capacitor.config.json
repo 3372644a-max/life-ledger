@@ -1,0 +1,8 @@
+{
+  "appId": "com.hyp.lifeledger",
+  "appName": "人生账本",
+  "webDir": "www",
+  "android": {
+    "allowMixedContent": true
+  }
+}

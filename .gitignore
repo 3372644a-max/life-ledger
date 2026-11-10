@@ -1,0 +1,26 @@
+# 依赖
+node_modules/
+app/node_modules/
+
+# Android 构建产物
+app/android/.gradle/
+app/android/build/
+app/android/app/build/
+app/android/local.properties
+app/android/capacitor-cordova-android-plugins/
+app/android/app/src/main/assets/public/
+
+# 系统 / 编辑器
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+
+# WorkBuddy 工作区数据
+.workbuddy/
+
+# 临时文件
+*.log
+
+# WorkBuddy �ڲ��ļ�
+.wbapp_*.genie

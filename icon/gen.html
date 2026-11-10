@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html><body>
+<input type="file" id="f" />
+<script>
+const img = new Image();
+img.onload = () => {
+  function make(size, mode){
+    const c = document.createElement("canvas");
+    c.width = c.height = size;
+    const x = c.getContext("2d");
+    if(mode === "round"){
+      x.beginPath(); x.arc(size/2, size/2, size/2, 0, Math.PI*2); x.clip();
+    }
+    if(mode === "fg"){
+      const s = size * 0.62;
+      const off = (size - s)/2;
+      x.drawImage(img, off, off, s, s);
+    } else {
+      x.drawImage(img, 0, 0, size, size);
+    }
+    return c.toDataURL("image/png");
+  }
+  const out = {};
+  [[48,"full"],[72,"full"],[96,"full"],[144,"full"],[192,"full"],
+   [48,"round"],[72,"round"],[96,"round"],[144,"round"],[192,"round"],
+   [108,"fg"],[162,"fg"],[216,"fg"],[324,"fg"],[432,"fg"]].forEach(p=>{
+    out[p[1]+p[0]] = make(p[0], p[1]);
+  });
+  const ta = document.createElement("textarea");
+  ta.id = "iconsJson";
+  ta.textContent = JSON.stringify(out);
+  document.body.appendChild(ta);
+  document.title = "ICONSDONE";
+};
+img.onerror = () => { document.title = "IMGERR"; };
+img.src = "src.png";
+</script>
+</body></html>
