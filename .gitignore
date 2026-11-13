@@ -24,3 +24,7 @@ Thumbs.db
 
 # WorkBuddy 内部文件
 .wbapp_*.genie
+
+# 璋冭瘯涓存椂鏂囦欢
+_shot*.png
+_t_*.html
