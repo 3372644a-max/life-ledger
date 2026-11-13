@@ -552,7 +552,7 @@ const pad2 = n => String(n).padStart(2, "0");
 const clamp = (v, a, b) => Math.min(b, Math.max(a, v));
 
 /* 应用版本号：每次发布更新时递增（与 Android versionName 保持一致） */
-const APP_VERSION = "5.13";
+const APP_VERSION = "5.14";
 
 /* 官方更新源：按顺序尝试，任一可达即可（均带跨域许可）。
    注意：托管地址带 sharecode，URL 需保留 query 参数。 */
@@ -1062,7 +1062,7 @@ function rebuild(){
     for(const v of vals){ if(v > hi) hi = v; if(v < lo) lo = v; }
     /* 只保证极端小的值（如刚记第一笔 0→x）也能画出可见实体，
        不再按价位比例撑大，否则横盘小十字会被强行撑成大蜡烛 */
-    const minBody = Math.max(Math.abs(close) * 0.00005, 0.02);
+    const minBody = Math.max(Math.abs(close) * 0.0002, 0.03);
     if(hi - lo < minBody){ const pd = minBody / 2; hi += pd; lo -= pd; }
     let vol = 0;
     for(const p of b.pts){
@@ -1094,9 +1094,15 @@ function fmtVal(v){
   if(k === "points") return fmtMoney(v, 0);
   return (Math.round(v * 10) / 10).toFixed(1);
 }
-function fmtAxis(v){
+function fmtAxis(v, step){
   const k = dim().kind;
-  if(k === "money") return fmtShort(v);
+  if(k === "money"){
+    if(Math.abs(v) >= 1e8) return (v/1e8).toFixed(2) + "亿";
+    if(Math.abs(v) >= 1e4) return (v/1e4).toFixed(1) + "万";
+    /* 近端聚焦后刻度间距可能很小，按步长保留小数位避免相邻刻度重合 */
+    const dec = !step || step >= 1 ? 0 : (step >= 0.1 ? 1 : 2);
+    return v.toFixed(dec);
+  }
   if(k === "points") return v >= 10000 ? (v/1000).toFixed(1) + "k" : Math.round(v);
   return (Math.round(v * 10) / 10).toFixed(1);
 }
@@ -1211,13 +1217,32 @@ function draw(){
   const end = clamp(Math.round(total - shift / space), 0, total);
   const start = Math.max(0, end - count - 2);
 
-  let hi = -Infinity, lo = Infinity;
+  /* 可见窗口全部蜡烛的 hi/lo（全历史范围） */
+  let fHi = -Infinity, fLo = Infinity;
   for(let i = start; i < end; i++){
     const k = candles[i];
-    if(k.h > hi) hi = k.h;
-    if(k.l < lo) lo = k.l;
+    if(k.h > fHi) fHi = k.h;
+    if(k.l < fLo) fLo = k.l;
   }
-  if(!isFinite(hi) || !isFinite(lo)){ hi = 1; lo = 0; }
+  if(!isFinite(fHi) || !isFinite(fLo)){ fHi = 1; fLo = 0; }
+  /* 近端聚焦缩放（真实行情观感）：
+     以最近 14 根可见蜡烛的波动为主范围，更早的大幅蜡烛只向外扩到
+     近端中枢 ± 近端跨度的 3 倍，再大的历史波动被裁剪出屏。
+     否则刚记过一笔大额后，整张图会被压扁成一条横线。
+     最近 14 根永远完整可见（cap 由近端范围推出，必然覆盖它们）*/
+  const rN = Math.min(14, end - start);
+  let rHi = -Infinity, rLo = Infinity;
+  for(let i = Math.max(start, end - rN); i < end; i++){
+    const k = candles[i];
+    if(k.h > rHi) rHi = k.h;
+    if(k.l < rLo) rLo = k.l;
+  }
+  if(!isFinite(rHi) || !isFinite(rLo)){ rHi = fHi; rLo = fLo; }
+  const rMid = (rHi + rLo) / 2;
+  const rSpan = Math.max(rHi - rLo, Math.abs(rMid) * 0.0012, 0.6);
+  let hi = Math.min(fHi, rMid + rSpan * 3);
+  let lo = Math.max(fLo, rMid - rSpan * 3);
+  if(hi <= lo){ hi = fHi; lo = fLo; }
   const pad = (hi - lo) * 0.14 || Math.abs(hi) * 0.02 || 1;
   hi += pad;
   lo = Math.max(0, lo - pad);
@@ -1245,7 +1270,7 @@ function draw(){
     ctx.beginPath(); ctx.moveTo(padL, y); ctx.lineTo(W - padR, y); ctx.stroke();
     ctx.fillStyle = AXIS;
     ctx.textAlign = "left";
-    ctx.fillText(fmtAxis(p), W - padR + 7, clamp(y, mainTop + 6, mainBot - 6));
+    ctx.fillText(fmtAxis(p, step), W - padR + 7, clamp(y, mainTop + 6, mainBot - 6));
   }
 
   /* ===== 裁剪：K 线元素只在绘图区内出现，滑出屏幕的部分自然消失 ===== */
@@ -1777,18 +1802,25 @@ function simTick(){
   const st = simStore[sim.dim];
   if(!st) return;
   const d = DIMS.find(x => x.key === sim.dim) || DIMS[0];
-  /* 波动幅度保持很小：只让现价和最后一根 K 线微跳，
-     不撑大 Y 轴、不把真实 K 线压扁（欧易式横盘） */
+  /* 收盘变化保持极小：顶部数字每秒只微跳；
+     真实感来自每根蜡烛的上下影线（见下），不靠收盘大幅游走 */
   const step = (d.kind === "score")
-    ? 0.018
-    : Math.max(st.base * 0.00005, 0.05);
-  st.cur += (Math.random() - 0.5) * 2 * step * 2.2;
+    ? 0.010
+    : Math.max(st.base * 0.00002, 0.02);
+  st.cur += (Math.random() - 0.5) * 2 * step * 1.8;
   st.cur += (st.base - st.cur) * 0.08;   /* 均值回归 → 横盘 */
   if(d.kind === "score") st.cur = clamp(st.cur, 1.2, 10.8);
   else if(st.cur < 0) st.cur = 0;
-  st.ticks.push({ t: Date.now(), v: st.cur, e: { mode: "sim", amount: 0 } });
-  /* 横盘历史不用无限堆积：够填满视图即可，避免图表被密密麻麻的小蜡烛挤爆 */
-  if(st.ticks.length > 240) st.ticks.shift();
+  /* 同一秒内推入上影/下影/收盘三个采样点，让横盘蜡烛有真实的影线结构；
+     收盘点必须最后推入（桶内最后一个值 = 收盘价，顶部数字只跟收盘走） */
+  const wick = (d.kind === "score") ? 0.06 : Math.max(st.base * 0.0009, 0.15);
+  const now = Date.now();
+  const e0 = { mode: "sim", amount: 0 };
+  st.ticks.push({ t: now, v: st.cur + Math.random() * wick * 1.7, e: e0 });
+  st.ticks.push({ t: now, v: st.cur - Math.random() * wick * 1.7, e: e0 });
+  st.ticks.push({ t: now, v: st.cur, e: e0 });
+  /* 横盘历史不用无限堆积：够填满视图即可（含影线采样点，×3） */
+  if(st.ticks.length > 720) st.ticks.splice(0, st.ticks.length - 720);
   rebuild();
   draw();
   if(sim.dim === curDim) heroTick();
