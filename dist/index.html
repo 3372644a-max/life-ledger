@@ -97,7 +97,7 @@
   .periods button.on{background:var(--panel2);color:var(--text);font-weight:600;}
 
   /* 图表 */
-  .chart-wrap{flex:1 1 320px;min-height:250px;position:relative;touch-action:none;cursor:crosshair;}
+  .chart-wrap{flex:1 1 380px;min-height:300px;position:relative;touch-action:none;cursor:crosshair;}
   #chart{display:block;width:100%;height:100%;}
   #chart.fade-in{animation:chartIn .24s ease-out;}
   @keyframes chartIn{from{opacity:.3}to{opacity:1}}
@@ -137,7 +137,7 @@
   .hud .live .num.beat-down{animation:beatDown .52s ease-out;}
 
   /* 流水 */
-  .ledger{flex:0 0 auto;max-height:20vh;display:flex;flex-direction:column;
+  .ledger{flex:0 0 auto;max-height:15vh;display:flex;flex-direction:column;
     border-top:1px solid var(--line);background:var(--panel);min-height:0;}
   .ledger-head{display:flex;align-items:center;justify-content:space-between;
     padding:7px 16px 4px;font-size:11px;color:var(--dim);flex:0 0 auto;}
@@ -552,7 +552,7 @@ const pad2 = n => String(n).padStart(2, "0");
 const clamp = (v, a, b) => Math.min(b, Math.max(a, v));
 
 /* 应用版本号：每次发布更新时递增（与 Android versionName 保持一致） */
-const APP_VERSION = "5.15";
+const APP_VERSION = "5.16";
 
 /* 官方更新源：按顺序尝试，任一可达即可（均带跨域许可）。
    注意：托管地址带 sharecode，URL 需保留 query 参数。 */
@@ -1805,15 +1805,15 @@ function simTick(){
   /* 收盘变化保持极小：顶部数字每秒只微跳；
      真实感来自每根蜡烛的上下影线（见下），不靠收盘大幅游走 */
   const step = (d.kind === "score")
-    ? 0.018
-    : Math.max(st.base * 0.00004, 0.04);
-  st.cur += (Math.random() - 0.5) * 2 * step * 2.0;
+    ? 0.030
+    : Math.max(st.base * 0.00008, 0.08);
+  st.cur += (Math.random() - 0.5) * 2 * step * 2.2;
   st.cur += (st.base - st.cur) * 0.08;   /* 均值回归 → 横盘 */
   if(d.kind === "score") st.cur = clamp(st.cur, 1.2, 10.8);
   else if(st.cur < 0) st.cur = 0;
   /* 同一秒内推入上影/下影/收盘三个采样点，让横盘蜡烛有真实的影线结构；
      收盘点必须最后推入（桶内最后一个值 = 收盘价，顶部数字只跟收盘走） */
-  const wick = (d.kind === "score") ? 0.08 : Math.max(st.base * 0.0012, 0.2);
+  const wick = (d.kind === "score") ? 0.12 : Math.max(st.base * 0.0020, 0.3);
   const now = Date.now();
   const e0 = { mode: "sim", amount: 0 };
   st.ticks.push({ t: now, v: st.cur + Math.random() * wick * 1.7, e: e0 });
