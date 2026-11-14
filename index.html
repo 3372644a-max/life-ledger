@@ -27,7 +27,7 @@
   @supports not (height:100dvh){ .phone{height:100vh;} }
 
   /* 顶栏 */
-  .topbar{height:46px;flex:0 0 auto;display:flex;align-items:center;gap:6px;padding:0 14px;}
+  .topbar{height:40px;flex:0 0 auto;display:flex;align-items:center;gap:6px;padding:0 14px;}
   .mark{
     width:21px;height:21px;border-radius:6px;flex:0 0 auto;position:relative;overflow:hidden;
     background:linear-gradient(135deg,#fff 0%,#fff 48%,#0b0e11 48%,#0b0e11 56%,#fff 56%,#fff 100%);
@@ -44,9 +44,9 @@
   .icon-btn svg{width:17px;height:17px;}
 
   /* 维度 */
-  .dims{display:flex;gap:6px;padding:0 14px 7px;flex:0 0 auto;}
+  .dims{display:flex;gap:6px;padding:0 14px 5px;flex:0 0 auto;}
   .dim{
-    flex:1;min-width:0;height:31px;border-radius:8px;border:1px solid transparent;
+    flex:1;min-width:0;height:28px;border-radius:8px;border:1px solid transparent;
     background:transparent;color:var(--dim);font-family:inherit;font-size:12.5px;font-weight:500;
     cursor:pointer;display:flex;align-items:center;justify-content:center;gap:5px;
     transition:all .16s;white-space:nowrap;
@@ -56,18 +56,18 @@
   .dim.on i{opacity:1;box-shadow:0 0 8px currentColor;}
 
   /* 主数值 */
-  .hero{padding:0 16px 10px;flex:0 0 auto;}
+  .hero{padding:0 16px 6px;flex:0 0 auto;}
   .hero-label{font-size:11px;color:var(--dim);letter-spacing:.4px;margin-bottom:2px;display:flex;align-items:center;gap:6px;}
   .hero-label .dot{width:5px;height:5px;border-radius:50%;background:var(--accent);animation:pulse 2.4s infinite;}
   @keyframes pulse{0%{box-shadow:0 0 0 0 rgba(255,255,255,.3)}70%{box-shadow:0 0 0 7px rgba(255,255,255,0)}100%{box-shadow:0 0 0 0 rgba(255,255,255,0)}}
   .hero-value{
-    font-size:35px;line-height:1.1;font-weight:600;letter-spacing:-1px;
+    font-size:31px;line-height:1.1;font-weight:600;letter-spacing:-1px;
     font-variant-numeric:tabular-nums;display:flex;align-items:baseline;
   }
-  .hero-value .cur{font-size:21px;font-weight:500;color:var(--text2);margin-right:2px;}
-  .hero-value .dec{font-size:19px;color:var(--text2);letter-spacing:-.5px;}
-  .hero-value .unit{font-size:14px;font-weight:500;color:var(--dim);margin-left:5px;letter-spacing:0;}
-  .hero-meta{display:flex;align-items:center;gap:8px;margin-top:5px;font-size:12px;min-width:0;}
+  .hero-value .cur{font-size:19px;font-weight:500;color:var(--text2);margin-right:2px;}
+  .hero-value .dec{font-size:17px;color:var(--text2);letter-spacing:-.5px;}
+  .hero-value .unit{font-size:13px;font-weight:500;color:var(--dim);margin-left:5px;letter-spacing:0;}
+  .hero-meta{display:flex;align-items:center;gap:8px;margin-top:3px;font-size:12px;min-width:0;}
   .chip{display:inline-flex;align-items:center;gap:3px;padding:2px 7px;border-radius:5px;font-weight:600;
     font-variant-numeric:tabular-nums;white-space:nowrap;}
   .chip.up{color:var(--up);background:color-mix(in srgb,var(--up) 12%,transparent);}
@@ -76,8 +76,8 @@
   .hero-sub{color:var(--dim);font-size:11px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
 
   /* 统计 */
-  .stats{display:flex;gap:7px;padding:0 14px 7px;flex:0 0 auto;}
-  .stat{flex:1;background:var(--panel);border:1px solid #191e23;border-radius:9px;padding:6px 8px 7px;min-width:0;}
+  .stats{display:flex;gap:7px;padding:0 14px 5px;flex:0 0 auto;}
+  .stat{flex:1;background:var(--panel);border:1px solid #191e23;border-radius:9px;padding:5px 8px 6px;min-width:0;}
   .stat .lab{font-size:9.5px;color:var(--dim);letter-spacing:.2px;margin-bottom:1px;white-space:nowrap;}
   .stat .val{font-size:14.5px;font-weight:600;font-variant-numeric:tabular-nums;letter-spacing:-.3px;
     white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
@@ -86,18 +86,18 @@
   .stat .bar i{display:block;height:100%;border-radius:2px;background:var(--accent);transition:width .4s;}
 
   /* 周期 */
-  .periods{display:flex;align-items:center;gap:3px;padding:0 12px 3px;flex:0 0 auto;
+  .periods{display:flex;align-items:center;gap:3px;padding:0 12px 2px;flex:0 0 auto;
     overflow-x:auto;scrollbar-width:none;}
   .periods::-webkit-scrollbar{display:none;}
   .periods button{
-    height:23px;padding:0 10px;border-radius:6px;border:0;background:transparent;
+    height:21px;padding:0 10px;border-radius:6px;border:0;background:transparent;
     color:var(--dim);font-size:11.5px;font-weight:500;cursor:pointer;font-family:inherit;
     transition:all .15s;white-space:nowrap;flex:0 0 auto;
   }
   .periods button.on{background:var(--panel2);color:var(--text);font-weight:600;}
 
   /* 图表 */
-  .chart-wrap{flex:1 1 380px;min-height:300px;position:relative;touch-action:none;cursor:crosshair;}
+  .chart-wrap{flex:1 1 440px;min-height:340px;position:relative;touch-action:none;cursor:crosshair;}
   #chart{display:block;width:100%;height:100%;}
   #chart.fade-in{animation:chartIn .24s ease-out;}
   @keyframes chartIn{from{opacity:.3}to{opacity:1}}
@@ -137,7 +137,7 @@
   .hud .live .num.beat-down{animation:beatDown .52s ease-out;}
 
   /* 流水 */
-  .ledger{flex:0 0 auto;max-height:15vh;display:flex;flex-direction:column;
+  .ledger{flex:0 0 auto;max-height:9vh;display:flex;flex-direction:column;
     border-top:1px solid var(--line);background:var(--panel);min-height:0;}
   .ledger-head{display:flex;align-items:center;justify-content:space-between;
     padding:7px 16px 4px;font-size:11px;color:var(--dim);flex:0 0 auto;}
@@ -552,7 +552,7 @@ const pad2 = n => String(n).padStart(2, "0");
 const clamp = (v, a, b) => Math.min(b, Math.max(a, v));
 
 /* 应用版本号：每次发布更新时递增（与 Android versionName 保持一致） */
-const APP_VERSION = "5.16";
+const APP_VERSION = "5.17";
 
 /* 官方更新源：按顺序尝试，任一可达即可（均带跨域许可）。
    注意：托管地址带 sharecode，URL 需保留 query 参数。 */
@@ -1793,7 +1793,7 @@ function simStart(){
   }
   sim.on = true; sim.dim = curDim;
   simPause();
-  sim.timer = setInterval(simTick, 900);
+  sim.timer = setInterval(simTick, 1000);
 }
 function simTick(){
   if(!sim.on) return;
@@ -1805,15 +1805,15 @@ function simTick(){
   /* 收盘变化保持极小：顶部数字每秒只微跳；
      真实感来自每根蜡烛的上下影线（见下），不靠收盘大幅游走 */
   const step = (d.kind === "score")
-    ? 0.030
-    : Math.max(st.base * 0.00008, 0.08);
+    ? 0.045
+    : Math.max(st.base * 0.00012, 0.12);
   st.cur += (Math.random() - 0.5) * 2 * step * 2.2;
   st.cur += (st.base - st.cur) * 0.08;   /* 均值回归 → 横盘 */
   if(d.kind === "score") st.cur = clamp(st.cur, 1.2, 10.8);
   else if(st.cur < 0) st.cur = 0;
   /* 同一秒内推入上影/下影/收盘三个采样点，让横盘蜡烛有真实的影线结构；
      收盘点必须最后推入（桶内最后一个值 = 收盘价，顶部数字只跟收盘走） */
-  const wick = (d.kind === "score") ? 0.12 : Math.max(st.base * 0.0020, 0.3);
+  const wick = (d.kind === "score") ? 0.18 : Math.max(st.base * 0.0030, 0.45);
   const now = Date.now();
   const e0 = { mode: "sim", amount: 0 };
   st.ticks.push({ t: now, v: st.cur + Math.random() * wick * 1.7, e: e0 });
