@@ -434,6 +434,15 @@
     </div>
   </div>
   <div class="set-row" style="display:block;">
+    <div><div>行情服务器（云引擎）</div><div class="desc" style="margin-bottom:6px;">在云服务器上 7×24 运行行情引擎，K 线不因关闭 App 而中断。格式 http://IP:8787，留空 = 仅本机模拟。部署指南见仓库 server 目录。</div></div>
+    <input class="note-input" id="srvUrl" type="text" placeholder="http://1.2.3.4:8787" style="width:100%;" />
+    <input class="note-input" id="srvToken" type="text" placeholder="行情令牌（部署时生成）" style="width:100%;margin-top:8px;" />
+    <div style="display:flex;gap:8px;align-items:center;margin-top:8px;">
+      <button class="icon-btn" id="btnSrvTest" style="font-size:12px;width:auto;padding:0 12px;height:30px;background:#0f1215;border-radius:7px;border:1px solid #232a31;color:var(--text2);">测试连接</button>
+      <span id="srvStatus" style="font-size:10.5px;color:var(--dim);"></span>
+    </div>
+  </div>
+  <div class="set-row" style="display:block;">
     <div><div>软件更新</div><div class="desc" style="margin-bottom:6px;">已内置官方更新源，直接点「检查更新」即可；新版本会自动下载，重启应用生效，无需重装 APK。也可填写自己的更新源地址覆盖。</div></div>
     <input class="note-input" id="updUrl" type="text" placeholder="留空 = 使用官方更新源" style="width:100%;" />
     <div style="display:flex;gap:8px;align-items:center;margin-top:8px;">
@@ -552,7 +561,7 @@ const pad2 = n => String(n).padStart(2, "0");
 const clamp = (v, a, b) => Math.min(b, Math.max(a, v));
 
 /* 应用版本号：每次发布更新时递增（与 Android versionName 保持一致） */
-const APP_VERSION = "5.18";
+const APP_VERSION = "5.19";
 
 /* 官方更新源：按顺序尝试，任一可达即可（均带跨域许可）。
    注意：托管地址带 sharecode，URL 需保留 query 参数。 */
@@ -721,6 +730,8 @@ let S = {
   syncMin: 15,
   colorMode: "okx",
   updateUrl: "",
+  serverUrl: "",
+  serverToken: "",
   targets: { wealth:1000000, growth:6000, mood:9, health:9, assets:0 },
   seeded: false,
   achievements: []
@@ -765,6 +776,7 @@ function save(){
     }
     localStorage.setItem(KEY, json);
   } catch(e){}
+  enginePush();   /* 记账/改设置后把新基准推给云端行情引擎 */
 }
 
 /* 从自动备份恢复 */
@@ -813,6 +825,8 @@ function load(){
         S.syncMin = o.syncMin || 15;
         S.colorMode = o.colorMode || "okx";
         S.updateUrl = o.updateUrl || "";
+        S.serverUrl = o.serverUrl || "";
+        S.serverToken = o.serverToken || "";
         S.targets = Object.assign(S.targets, o.targets || {});
         S.achievements = o.achievements || [];
         S.seeded = true;
@@ -1797,6 +1811,8 @@ function simStart(){
 }
 function simTick(){
   if(!sim.on) return;
+  /* 云端引擎健康时由服务器主导行情，本机游走暂停 */
+  if(engineOn() && engine.fail < 3) return;
   /* 正在拖动 K 线或用十字光标查看历史时先别跳，松手立刻继续 */
   if(drag || cursor.active) return;
   const st = simStore[sim.dim];
@@ -1833,8 +1849,101 @@ function resetIdle(){
 }
 document.addEventListener("visibilitychange", () => {
   if(document.hidden){ simPause(); clearTimeout(idleTimer); }
-  else resetIdle();
+  else { resetIdle(); engineSync(); }
 });
+
+/* ============ 云端行情引擎（可选） ============
+   在云服务器上 7×24 跑横盘并记录 K 线；手机打开时拉取续上，
+   打开期间每 3 秒同步一次；服务器不可达时自动回退本机模拟。 */
+const engine = { fail: 0, lastOk: 0, pushTimer: 0 };
+function engineBase(){ return (S.serverUrl || "").trim().replace(/\/+$/, ""); }
+function engineOn(){ return engineBase() !== ""; }
+
+async function engineSync(){
+  const base = engineBase();
+  if(!base || document.hidden || engine.pushTimer) return;
+  const req = {};
+  for(const d of DIMS){
+    if(d.key === "assets") continue;      /* 持仓走真实行情，不模拟 */
+    const st = simStore[d.key];
+    const realPts = computePoints(d.key);
+    let since = 0;
+    if(st && st.ticks.length) since = st.ticks[st.ticks.length - 1].t;
+    else if(realPts.length) since = realPts[realPts.length - 1].t;
+    req[d.key] = since;
+  }
+  try{
+    const res = await fetch(base + "/sync", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ token: (S.serverToken || "").trim(), dims: req })
+    });
+    if(!res.ok) throw new Error("HTTP " + res.status);
+    const j = await res.json();
+    let changed = false;
+    for(const d of DIMS){
+      const sd = j.dims && j.dims[d.key];
+      if(!sd || sd.base === null || sd.cur === null) continue;
+      const realPts = computePoints(d.key);
+      const realLast = realPts.length ? realPts[realPts.length - 1].v : 0;
+      const tol = Math.max(Math.abs(sd.base) * 1e-9, 1e-9);
+      let st = simStore[d.key];
+      if(!st || !st.ticks.length || Math.abs((st.base || 0) - sd.base) > tol){
+        st = simStore[d.key] = { base: sd.base, cur: sd.cur, ticks: [] };
+        changed = true;
+      }
+      const pts = sd.pts || [];
+      if(pts.length){
+        const t0 = pts[0][0];
+        st.ticks = st.ticks.filter(p => p.t < t0);
+        for(const p of pts) st.ticks.push({ t: p[0], v: p[1], e: { mode: "sim", amount: 0 } });
+        st.ticks.sort((a, b) => a.t - b.t);   /* 防御性排序：重叠窗口/并发回调下保序 */
+        if(st.ticks.length > 720) st.ticks.splice(0, st.ticks.length - 720);
+        changed = true;
+      }
+      if(Math.abs(st.cur - sd.cur) > 1e-9){ st.cur = sd.cur; changed = true; }
+      /* 服务器基准与手机真实末值一致时，顶部数字才信任服务器现价 */
+      if(Math.abs(sd.base - realLast) <= Math.max(Math.abs(realLast) * 1e-9, 1e-9)){
+        sim.on = true;
+      }
+    }
+    engine.fail = 0; engine.lastOk = Date.now();
+    if(changed){
+      rebuild(); draw();
+      if(sim.on && simStore[curDim] && simStore[curDim].ticks.length) heroTick();
+    }
+  }catch(e){
+    engine.fail++;
+    if(engine.fail === 3 && !document.hidden){
+      toast("行情服务器连接失败，改用本机模拟");
+      resetIdle();
+    }
+  }
+}
+
+function enginePush(){
+  if(!engineOn()) return;
+  clearTimeout(engine.pushTimer);
+  engine.pushTimer = setTimeout(async () => {
+    engine.pushTimer = 0;
+    const base = engineBase();
+    const dims = {};
+    for(const d of DIMS){
+      if(d.key === "assets") continue;
+      const pts = computePoints(d.key);
+      if(pts.length) dims[d.key] = pts[pts.length - 1].v;
+    }
+    if(!Object.keys(dims).length) return;
+    try{
+      const res = await fetch(base + "/anchor", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ token: (S.serverToken || "").trim(), dims })
+      });
+      if(res.ok) engineSync();
+    }catch(e){}
+  }, 800);
+}
 
 /* ============ 渲染 ============ */
 function renderPeriods(){
@@ -2811,6 +2920,8 @@ function openSettings(){
   $("#tgtGrowth").value = S.targets.growth || "";
   $("#tgtScore").value = S.targets.mood || "";
   $("#updUrl").value = S.updateUrl || "";
+  $("#srvUrl").value = S.serverUrl || "";
+  $("#srvToken").value = S.serverToken || "";
   $("#verText").textContent = APP_VERSION;
 $("#brandVer").textContent = "v" + APP_VERSION;
   const pend = localStorage.getItem("upd_ver");
@@ -2822,6 +2933,35 @@ $("#btnSettings").addEventListener("click", openSettings);
 $("#updUrl").addEventListener("change", () => {
   S.updateUrl = $("#updUrl").value.trim();
   save();
+});
+$("#srvUrl").addEventListener("change", () => {
+  S.serverUrl = $("#srvUrl").value.trim();
+  engine.fail = 0;
+  save();
+  if(engineOn()) engineSync(); else toast("已关闭云端行情，改用本机模拟");
+});
+$("#srvToken").addEventListener("change", () => {
+  S.serverToken = $("#srvToken").value.trim();
+  save();
+  if(engineOn()) engineSync();
+});
+$("#btnSrvTest").addEventListener("click", async () => {
+  S.serverUrl = $("#srvUrl").value.trim();
+  S.serverToken = $("#srvToken").value.trim();
+  save();
+  const st = $("#srvStatus");
+  if(!engineOn()){ st.textContent = "未填写服务器地址"; return; }
+  st.textContent = "连接中…";
+  try{
+    const res = await fetch(engineBase() + "/health");
+    const j = await res.json();
+    if(j && j.ok){
+      engine.fail = 0;
+      const d = j.dims && j.dims.wealth;
+      st.textContent = "连接成功 · 身价基准 " + (d && d.base !== null ? fmtLive(d.base) : "未设置");
+      engineSync();
+    } else st.textContent = "服务异常";
+  }catch(e){ st.textContent = "连接失败：" + e.message; }
 });
 $("#btnCheckUpd").addEventListener("click", () => {
   S.updateUrl = $("#updUrl").value.trim();
@@ -3008,6 +3148,8 @@ if(window.ResizeObserver){
 requestAnimationFrame(resize);
 window.addEventListener("orientationchange", () => setTimeout(resize, 220));
 resetIdle();
+setInterval(engineSync, 3000);
+engineSync();
 
 /* 版本号显示 + 启动时静默检查应用内更新 */
 $("#verText").textContent = APP_VERSION;
